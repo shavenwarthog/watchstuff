@@ -51,7 +51,6 @@ def should_ignore(config, procname):
     if m:
         return True
     return False
-              
 
 
 def do_color(config, msg):
@@ -92,7 +91,7 @@ def watchstuff(_opts, args):
     if args:
         proc = os.popen('cat {0}'.format(' '.join(args)))
     else:
-        proc = os.popen('tail -f /var/log/syslog')
+        proc = os.popen('tail -10 /var/log/syslog; tail -f /var/log/syslog')
 
     config = parseconfig(CONFIG)
     
@@ -107,13 +106,15 @@ def watchstuff(_opts, args):
                 break
             info = linepat.match(line)
             if not info:
-                print '??',info
+                print '??',line
                 continue
             timestamp, _host, procname, rest = info.groups()
             if should_ignore(config, procname):
                 continue
             if last and time.time()-last > pause_secs:
-                print '\n\n' + '-'*20 + str(int(time.time()-last)), 'sec\n'
+                print
+                print '-'*20, int(time.time()-last), 'sec'
+                print
             last = time.time()
             print colored(timestamp,attrs=['underline']),
             print colored(procname,'yellow'),
