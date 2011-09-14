@@ -28,7 +28,6 @@ color_pat:
 
 # can repeat:
 color_pat:
- \[.+?\],bold
  smtp_reply.+?]]],bold
 '''
 
@@ -39,12 +38,20 @@ def parseconfig(configstr):
     return dict(par.items('default'))
 
 
-def is_dull(config, procname):
-    return re.search(
+def should_ignore(config, procname):
+    m = re.search(
         r'('
         + r'|'.join(config.get('ignore','').split())
         + r')\b',
         procname)
+    if m:
+        return True
+    pats = '|'.join(config.get('ignore_pat','').split())
+    m = re.search(r'(' + pats + r')\b', procname)
+    if m:
+        return True
+    return False
+              
 
 
 def do_color(config, msg):
@@ -103,7 +110,7 @@ def watchstuff(_opts, args):
                 print '??',info
                 continue
             timestamp, _host, procname, rest = info.groups()
-            if is_dull(config, procname):
+            if should_ignore(config, procname):
                 continue
             if last and time.time()-last > pause_secs:
                 print '\n\n' + '-'*20 + str(int(time.time()-last)), 'sec\n'
