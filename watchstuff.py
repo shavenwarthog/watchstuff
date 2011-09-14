@@ -11,10 +11,32 @@ from termcolor import colored
 
 CONFIG = '''
 [default]
+
+# ignore lines with any of these words:
 ignore: postfix CRON ntpd apid_stat.py pdns_recursor
+
+# ignore lines with this regular expression pattern:
 ignore_pat: elasticd.+
+
+# colorize words:
 colori: error,white,on_red
+
+# colorize patterns:
+color_pat:
+ client,bold
+ Message.+as dev\S+,underline
+
+# can repeat:
+color_pat:
+ \[.+?\],bold
+ smtp_reply.+?]]],bold
 '''
+
+
+def parseconfig(configstr):
+    par = ConfigParser.SafeConfigParser()
+    par.readfp( StringIO.StringIO(configstr) )
+    return dict(par.items('default'))
 
 
 def is_dull(config, procname):
@@ -24,29 +46,42 @@ def is_dull(config, procname):
         + r')\b',
         procname)
 
-def annotate(msg):
-    def makered(match):
-        return colored(match.group(0), 'white','on_red')
-    makebold = lambda m: colored(m.group(0), attrs=['bold'])
-    msg = re.compile(r'error', re.IGNORECASE).sub(makered, msg)
-    msg = re.compile(r'(email relayed|smtp_reply)', re.IGNORECASE).sub(
-        makebold, msg)
-    # 'Message queued by dev6-md2.sendgrid.net as dev6-md2.9262.4E6FDF801',
-    msg = re.sub(r'Message.+as dev\S+', makebold, msg)
-    msg = re.sub(r'smtp_reply.+?]]]', makebold, msg)
+
+def do_color(config, msg):
+    word,color,on_color = config.get('colori').split(',')
+    pat = re.compile(word, re.IGNORECASE)
+    return pat.sub(lambda match: colored(match.group(0), color, on_color), msg)
+    
+
+def do_colorpat(config, msg):
+    for colorpat in filter(None, config.get('color_pat').split('\n')):
+        args = colorpat.split(',')
+        word = args.pop(0)
+        attrs = []
+        for aname in ('bold','underline'):
+            if aname in args:
+                args.remove(aname)
+                attrs.append(aname)
+        pat = re.compile(word)
+        msg = pat.sub(lambda match: colored(match.group(0), attrs=attrs), msg)
     return msg
+
+
+def annotate(config, msg):
+    msg = do_color(config, msg)
+    msg = do_colorpat(config, msg)
+    return msg
+
+
+
+# ::::::::::::::::::::::::::::::::::::::::::::::::::
 
 logging.basicConfig(
     filename='/tmp/watchstuff.log',
     level=logging.DEBUG,
     )
 
-def parseconfig(configstr):
-    par = ConfigParser.SafeConfigParser()
-    par.readfp( StringIO.StringIO(configstr) )
-    return dict(par.items('default'))
-
-def watchstuff(opts, args):
+def watchstuff(_opts, args):
     if args:
         proc = os.popen('cat {0}'.format(' '.join(args)))
     else:
@@ -69,15 +104,13 @@ def watchstuff(opts, args):
                 continue
             timestamp, _host, procname, rest = info.groups()
             if is_dull(config, procname):
-                if 0:
-                    print '(ignoring: {0} {1})'.format(procname,rest)
                 continue
             if last and time.time()-last > pause_secs:
                 print '\n\n' + '-'*20 + str(int(time.time()-last)), 'sec\n'
             last = time.time()
             print colored(timestamp,attrs=['underline']),
             print colored(procname,'yellow'),
-            print annotate(rest)
+            print annotate(config, rest)
 
     except KeyboardInterrupt:
         pass
