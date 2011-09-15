@@ -72,7 +72,7 @@ def do_colorpat(config, msg):
         msg = pat.sub(lambda match: colored(match.group(0), attrs=attrs), msg)
     return msg
 
-
+        
 def annotate(config, msg):
     msg = do_color(config, msg)
     msg = do_colorpat(config, msg)
