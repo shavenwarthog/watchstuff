@@ -89,13 +89,13 @@ logging.basicConfig(
 
 def watchstuff(_opts, args):
     if args:
-        proc = os.popen('cat {0}'.format(' '.join(args)))
+        proc = os.popen('tail -f {0}'.format(' '.join(args)))
     else:
         proc = os.popen('tail -10 /var/log/syslog; tail -f /var/log/syslog')
 
     config = parseconfig(CONFIG)
     
-    # Sep 13 13:13:54 dev6-md2 apid_stat.py 123:
+    # Sep 13 13:13:54 hostname procname 123:
     linepat = re.compile('(... .. \S+) (\S+) (.+?:) (.+)')
     try:
         last = None
@@ -106,7 +106,7 @@ def watchstuff(_opts, args):
                 break
             info = linepat.match(line)
             if not info:
-                print '??',line
+                print '??',line,
                 continue
             timestamp, _host, procname, rest = info.groups()
             if should_ignore(config, procname):
@@ -122,6 +122,7 @@ def watchstuff(_opts, args):
 
     except KeyboardInterrupt:
         pass
+
 
 def main():
     parser = optparse.OptionParser()

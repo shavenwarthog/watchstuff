@@ -5,16 +5,14 @@ setup(
     packages=find_packages(),
     entry_points = {
         'console_scripts': [
-            'watchstuff = watchstuff:main',
+            'watchstuff = watchstuff.watchstuff:main',
             ],
         },
     zip_safe=True,
     install_requires=[
         'distribute',
+        'termcolor',
         ],
-    # tests_require=[
-    #     'pylint',
-    #     ],
 
     author='John Mitchell',
     author_email='johnlmitchell@gmail.com',
