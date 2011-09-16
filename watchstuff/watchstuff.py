@@ -20,6 +20,7 @@ ignore_pat: elasticd.+
 
 # colorize words:
 colori: error,white,on_red
+colori: warning,red
 
 # colorize patterns:
 color_pat:
@@ -29,6 +30,11 @@ color_pat:
 # can repeat:
 color_pat:
  smtp_reply.+?]]],bold
+
+# Munin timestamp
+color_pat:
+ ..../../..-..:..:..,underline
+
 '''
 
 
@@ -54,7 +60,14 @@ def should_ignore(config, procname):
 
 
 def do_color(config, msg):
-    word,color,on_color = config.get('colori').split(',')
+    color, on_color = None, None
+    args = config.get('colori').split(',')
+    word = args.pop(0)
+    if args:
+        color = args.pop(0)
+    if args:
+        on_color = args.pop(0)
+
     pat = re.compile(word, re.IGNORECASE)
     return pat.sub(lambda match: colored(match.group(0), color, on_color), msg)
     
@@ -105,19 +118,18 @@ def watchstuff(_opts, args):
             if not line:
                 break
             info = linepat.match(line)
-            if not info:
-                print '??',line,
-                continue
-            timestamp, _host, procname, rest = info.groups()
-            if should_ignore(config, procname):
-                continue
+            rest = line.strip()
+            if info:
+                rest = info.group(4)
+                if should_ignore(config, info.group(3)):
+                    continue
             if last and time.time()-last > pause_secs:
                 print
                 print '-'*20, int(time.time()-last), 'sec'
                 print
             last = time.time()
-            print colored(timestamp,attrs=['underline']),
-            print colored(procname,'yellow'),
+            # print colored(timestamp,attrs=['underline']),
+            # print colored(procname,'yellow'),
             print annotate(config, rest)
 
     except KeyboardInterrupt:
