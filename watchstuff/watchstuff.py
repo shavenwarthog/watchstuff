@@ -13,10 +13,10 @@ CONFIG = '''
 [default]
 
 # ignore lines with any of these words:
-ignore: postfix CRON ntpd apid_stat.py pdns_recursor
+ignore_proc: postfix CRON ntpd apid_stat.py pdns_recursor
 
 # ignore lines with this regular expression pattern:
-ignore_pat: elasticd.+
+ignore_proc_pat: elasticd.+
 
 # colorize words:
 colori: error,white,on_red
@@ -34,7 +34,9 @@ color_pat:
 # Munin timestamp
 color_pat:
  ..../../..-..:..:..,underline
-
+ INFO,bold
+ ERROR,red
+ entropy,black,on_yellow
 '''
 
 
@@ -44,19 +46,27 @@ def parseconfig(configstr):
     return dict(par.items('default'))
 
 
-def should_ignore(config, procname):
+def should_ignore_proc(config, procname):
     m = re.search(
         r'('
-        + r'|'.join(config.get('ignore','').split())
+        + r'|'.join(config.get('ignore_proc','').split())
         + r')\b',
         procname)
     if m:
         return True
-    pats = '|'.join(config.get('ignore_pat','').split())
+    pats = '|'.join(config.get('ignore_proc_pat','').split())
     m = re.search(r'(' + pats + r')\b', procname)
     if m:
         return True
     return False
+
+
+def should_ignore(config, msg):
+    ignore_str = config.get('ignore')
+    if not ignore_str:
+        return False
+    ignore_pat = re.compile(r'('+ignore_str+r')')
+    return ignore_pat.search(msg) != False
 
 
 def do_color(config, msg):
@@ -87,6 +97,8 @@ def do_colorpat(config, msg):
 
         
 def annotate(config, msg):
+    if should_ignore(config, msg):
+        return
     msg = do_color(config, msg)
     msg = do_colorpat(config, msg)
     return msg
@@ -100,13 +112,19 @@ logging.basicConfig(
     level=logging.DEBUG,
     )
 
-def watchstuff(_opts, args):
-    if args:
-        proc = os.popen('tail -f {0}'.format(' '.join(args)))
-    else:
-        proc = os.popen('tail -10 /var/log/syslog; tail -f /var/log/syslog')
+def watchstuff(opts, args):
+    cmd = ['tail']
+    if opts.follow:
+        cmd.append('-f')
 
+    # WARNING: os.popen() is deprecated.  However, it works.
+    proc = os.popen(' '.join(cmd + args))
+
+    # 
     config = parseconfig(CONFIG)
+    config.update( dict(
+            ignore=opts.ignore,
+            ) )
     
     # Sep 13 13:13:54 hostname procname 123:
     linepat = re.compile('(... .. \S+) (\S+) (.+?:) (.+)')
@@ -121,7 +139,7 @@ def watchstuff(_opts, args):
             rest = line.strip()
             if info:
                 rest = info.group(4)
-                if should_ignore(config, info.group(3)):
+                if should_ignore_proc(config, info.group(3)):
                     continue
             if last and time.time()-last > pause_secs:
                 print
@@ -130,7 +148,9 @@ def watchstuff(_opts, args):
             last = time.time()
             # print colored(timestamp,attrs=['underline']),
             # print colored(procname,'yellow'),
-            print annotate(config, rest)
+            msg = annotate(config, rest)
+            if msg:
+                print msg
 
     except KeyboardInterrupt:
         pass
@@ -138,11 +158,10 @@ def watchstuff(_opts, args):
 
 def main():
     parser = optparse.OptionParser()
-    # parser.add_option("-f", "--file", dest="filename",
-    #                   help="write report to FILE", metavar="FILE")
-    # parser.add_option("-q", "--quiet",
-    #                   action="store_false", dest="verbose", default=True,
-    #                   help="don't print status messages to stdout")
+    parser.add_option("-f", dest="follow", action="store_const",
+                      const=True, help="follow file")
+    parser.add_option('--ignore', dest="ignore", default='',
+                      help="ignore lines with pattern")
     (options, args) = parser.parse_args()
     return watchstuff(options, args)
 
