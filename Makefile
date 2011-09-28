@@ -28,3 +28,6 @@ sync:
 rinstall: sync
 	ssh $(DEVHOST) make -C checkout/watchstuff reinstall
 
+clean:
+	-$(RM) fn_[0-9]*.py
+
