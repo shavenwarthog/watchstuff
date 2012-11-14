@@ -5,9 +5,11 @@ watchstuff.py -- "tail -f" files, add tasteful color, ignore boring stuff
 '''
 
 import ConfigParser, logging, optparse, os, re, StringIO, time
+from nose.tools import eq_
 
 # http://pypi.python.org/pypi/termcolor
 from termcolor import colored 
+
 
 CONFIG = '''
 [default]
@@ -17,8 +19,9 @@ CONFIG = '''
 
 # ignore lines with this regular expression pattern:
 #ignore_pat: elasticd.+
-# ignore_pat: lib/python
-ignore_pat: py
+ignore_pat:
+  lib/python2
+  raise.JSONDecodeError
 
 # colorize words:
 colori: error,white,on_red
@@ -64,7 +67,7 @@ def should_ignore(config, line):
         return bool( re.search(r'(' + pats + r')\b', line) )
     return False
 
-from nose.tools import eq_
+
 def test_should_ignore():
     conf = dict(ignore='bogus')
     eq_( should_ignore(conf, 'tasty'), False )
