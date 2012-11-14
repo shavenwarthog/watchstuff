@@ -24,6 +24,7 @@ ignore_pat:
 
 ignore_twoline:
   lib/python2
+  /tastypie/
 
 # colorize words:
 colori: error,white,on_red
