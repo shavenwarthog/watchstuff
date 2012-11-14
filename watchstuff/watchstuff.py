@@ -155,24 +155,29 @@ def watchstuff(opts, args):
         '(?P<timestamp>	\S+ [0-9:]{8})\] \s+'
         '(?P<rest>	.+)',
         re.VERBOSE)
-    
+    name_pat = re.compile('==>.(.+).<==')
 
     try:
         last = None
+        name = None
         pause_secs = 5
         while 1:
             line = proc.readline()
             if not line:
                 break
+            m = name_pat.match(line)
+            if m:
+                name = os.path.basename(m.group(1))
+                continue
             info = date_pat.match(line)
-            rest = line.strip()
+            rest = line.rstrip()
             if info:
                 rest = info.group('rest')
                 # if should_ignore_proc(config, info.group(3)):
                 #     continue
             else:
                 if opts.verbose:
-                    print '?',line.rstrip()
+                    print '?',name,line.rstrip()
                     continue
             if last and time.time()-last > pause_secs:
                 print
@@ -181,7 +186,10 @@ def watchstuff(opts, args):
             last = time.time()
             msg = annotate(config, rest)
             if msg:
-                print msg
+                if name:
+                    print '{0}: {1}'.format(name,msg)
+                else:
+                    print msg
 
     except KeyboardInterrupt:
         pass
