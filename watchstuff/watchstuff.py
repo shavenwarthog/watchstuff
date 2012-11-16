@@ -29,12 +29,12 @@ ignore_twoline:
   /tastypie/
 
 # colorize words:
-colori: 
-  info,yellow,on_blue
-  error,white,on_red
-  warning,red
-  debug,white,on_blue
-  beer,white,on_red
+color: 
+  INFO,yellow,on_blue
+  ERROR,white,on_red
+  WARNING,red
+  DEBUG,white,on_blue
+  BEER,white,on_red
 
 # colorize patterns:
 # color_pat:
@@ -130,9 +130,10 @@ def test_ignore_twoline():
 
                       
 def do_color(config, msg):
-    for colorpat in filter(None, config.get('colori','').split('\n')):
+    for colorpat in filter(None, config.get('color','').split('\n')):
         word,color,on_color = ( colorpat.split(',')+[None,None] )[:3]
-        pat = re.compile(word, re.IGNORECASE)
+        # pat = re.compile(word, re.IGNORECASE)
+        pat = re.compile(word)
         msg = pat.sub(
             lambda match: colored(match.group(0), color, on_color),
             msg,
@@ -141,7 +142,7 @@ def do_color(config, msg):
 
 
 def test_do_color():    
-    conf = {'colori': '\na,white\nc,red,on_yellow'} # all, with newlines
+    conf = {'color': '\na,white\nc,red,on_yellow'} # all, with newlines
     eq_( do_color(conf, 'apple beer cider'),
          '\x1b[37ma\x1b[0mpple beer \x1b[43m\x1b[31mc\x1b[0mider',
          )
