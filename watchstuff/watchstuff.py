@@ -21,19 +21,33 @@ CONFIG = '''
 #ignore_pat: elasticd.+
 ignore_pat:
   raise.JSONDecodeError
-
+ignore_pat:
+  GET.+/static/
+  WARNING.+Not.Found
 ignore_twoline:
   lib/python2
   /tastypie/
 
 # colorize words:
-colori: error,white,on_red
-colori: warning,red
+colori: 
+  info,yellow,on_blue
+  error,white,on_red
+  warning,red
+  debug,white,on_blue
+  beer,white,on_red
 
 # colorize patterns:
 # color_pat:
 #  client,bold
 #  Message.+as dev\S+,underline
+
+color_pat:
+   original_image.+,bold
+   [iI]mage,bold
+   logo,bold
+   DEBUG,white,on_grey
+   /views.py.+,underline
+   /v1/\S+,underline
 
 # can repeat:
 # color_pat:
@@ -55,6 +69,21 @@ def parseconfig(configstr):
     par = ConfigParser.SafeConfigParser()
     par.readfp( StringIO.StringIO(configstr) )
     return dict(par.items('default'))
+
+def test_parseconfig():
+    conf = parseconfig('''
+[default]
+colori: a,b
+colori: c,d
+''')
+    eq_(conf, {'colori':'c,d'})            # latest
+    conf = parseconfig('''
+[default]
+colori:
+  a,b
+  c,d
+''')
+    eq_(conf, {'colori': '\na,b\nc,d'}) # all, with newlines
 
 
 def should_ignore(config, line):
@@ -101,17 +130,22 @@ def test_ignore_twoline():
 
                       
 def do_color(config, msg):
-    color, on_color = None, None
-    args = config.get('colori').split(',')
-    word = args.pop(0)
-    if args:
-        color = args.pop(0)
-    if args:
-        on_color = args.pop(0)
+    for colorpat in filter(None, config.get('colori','').split('\n')):
+        word,color,on_color = ( colorpat.split(',')+[None,None] )[:3]
+        pat = re.compile(word, re.IGNORECASE)
+        msg = pat.sub(
+            lambda match: colored(match.group(0), color, on_color),
+            msg,
+            )
+    return msg
 
-    pat = re.compile(word, re.IGNORECASE)
-    return pat.sub(lambda match: colored(match.group(0), color, on_color), msg)
-    
+
+def test_do_color():    
+    conf = {'colori': '\na,white\nc,red,on_yellow'} # all, with newlines
+    eq_( do_color(conf, 'apple beer cider'),
+         '\x1b[37ma\x1b[0mpple beer \x1b[43m\x1b[31mc\x1b[0mider',
+         )
+
 
 def do_colorpat(config, msg):
     for colorpat in filter(None, config.get('color_pat','').split('\n')):
