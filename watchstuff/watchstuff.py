@@ -5,7 +5,7 @@ watchstuff.py -- "tail -f" files, add tasteful color, ignore boring stuff
 '''
 
 import ConfigParser, logging, optparse, os, re, StringIO, time
-from nose.tools import eq_
+# from nose.tools import eq_
 
 # http://pypi.python.org/pypi/termcolor
 from termcolor import colored 
@@ -22,6 +22,7 @@ CONFIG = '''
 ignore_pat:
   raise.JSONDecodeError
 ignore_pat:
+  (GET|POST)
   GET.+/static/
   WARNING.+Not.Found
 ignore_twoline:
@@ -29,12 +30,16 @@ ignore_twoline:
   /tastypie/
 
 # colorize words:
+# - colors: black red green yellow blue magenta cyan white
+# - options: bold underscore
 color: 
-  INFO,yellow,on_blue
+  INFO,yellow
   ERROR,white,on_red
   WARNING,red
   DEBUG,white,on_blue
   BEER,white,on_red
+  GET,yellow,on_grey
+  POST,yellow,on_grey
 
 # colorize patterns:
 # color_pat:
@@ -42,12 +47,12 @@ color:
 #  Message.+as dev\S+,underline
 
 color_pat:
-   original_image.+,bold
-   [iI]mage,bold
-   logo,bold
-   DEBUG,white,on_grey
+   INFO,bold
    /views.py.+,underline
-   /v1/\S+,underline
+   /v1/[^?\s]+,underline
+   POST,underline
+   detail,bold
+   error,underline
 
 # can repeat:
 # color_pat:
