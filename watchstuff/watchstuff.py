@@ -31,8 +31,9 @@ ignore_twoline:
 
 # colorize words:
 # - colors: black red green yellow blue magenta cyan white
-# - options: bold underscore
+#
 color: 
+  detail,red
   INFO,yellow
   ERROR,white,on_red
   WARNING,red
@@ -42,10 +43,8 @@ color:
   POST,yellow,on_grey
 
 # colorize patterns:
-# color_pat:
-#  client,bold
-#  Message.+as dev\S+,underline
-
+# - options: bold underscore
+#
 color_pat:
    INFO,bold
    /views.py.+,underline
