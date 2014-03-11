@@ -11,7 +11,7 @@ import ConfigParser, logging, optparse, os, re, StringIO, time
 from termcolor import colored 
 
 
-CONFIG = '''
+CONFIG = r'''
 [default]
 
 # ignore lines with any of these words:
@@ -52,7 +52,8 @@ color_pat:
    POST,underline
    detail,bold
    error,underline
-
+   \s4\d\d\s,red
+   \s5\d\d\s,red
 # can repeat:
 # color_pat:
 #  smtp_reply.+?]]],bold
@@ -69,25 +70,16 @@ color_pat:
 '''
 
 
+logging.basicConfig(
+    filename='/tmp/watchstuff.log',
+    level=logging.DEBUG,
+    )
+
+
 def parseconfig(configstr):
     par = ConfigParser.SafeConfigParser()
     par.readfp( StringIO.StringIO(configstr) )
     return dict(par.items('default'))
-
-def test_parseconfig():
-    conf = parseconfig('''
-[default]
-colori: a,b
-colori: c,d
-''')
-    eq_(conf, {'colori':'c,d'})            # latest
-    conf = parseconfig('''
-[default]
-colori:
-  a,b
-  c,d
-''')
-    eq_(conf, {'colori': '\na,b\nc,d'}) # all, with newlines
 
 
 def should_ignore(config, line):
@@ -113,26 +105,6 @@ def should_ignore(config, line):
     return False, False
 
 
-def test_ignore():
-    conf = dict(ignore='bogus')
-    eq_( should_ignore(conf, 'tasty'), (False,False) )
-    eq_( should_ignore(conf, 'this bogus line'), (True,False) )
-
-
-def test_ignore_pat():
-    conf = dict(ignore_pat='g.+s')
-    eq_( should_ignore(conf, 'tasty'), (False,False) )
-    eq_( should_ignore(conf, 'this bogus line'), (True,False) )
-    eq_( should_ignore(conf, 'squishbogus'), (True,False) )
-    eq_( should_ignore(conf, 'guff'), (False,False) )
-
-
-def test_ignore_twoline():
-    conf = dict(ignore_twoline='python')
-    eq_( should_ignore(conf, 'beer'), (False,False) )
-    eq_( should_ignore(conf, '/python2'), (True,True) )
-
-                      
 def do_color(config, msg):
     for colorpat in filter(None, config.get('color','').split('\n')):
         word,color,on_color = ( colorpat.split(',')+[None,None] )[:3]
@@ -143,13 +115,6 @@ def do_color(config, msg):
             msg,
             )
     return msg
-
-
-def test_do_color():    
-    conf = {'color': '\na,white\nc,red,on_yellow'} # all, with newlines
-    eq_( do_color(conf, 'apple beer cider'),
-         '\x1b[37ma\x1b[0mpple beer \x1b[43m\x1b[31mc\x1b[0mider',
-         )
 
 
 def do_colorpat(config, msg):
@@ -180,11 +145,6 @@ def annotate(config, msg):
 
 
 # ::::::::::::::::::::::::::::::::::::::::::::::::::
-
-logging.basicConfig(
-    filename='/tmp/watchstuff.log',
-    level=logging.DEBUG,
-    )
 
 def watchstuff(opts, args):
     cmd = ['tail']
@@ -251,6 +211,7 @@ def watchstuff(opts, args):
 
 def main():
     parser = optparse.OptionParser()
+    parser.add_option("--auto", action="store_true")
     parser.add_option("-f", dest="follow", action="store_const",
                       const=True, help="follow file")
     parser.add_option('--ignore', dest="ignore", default='',
@@ -258,7 +219,14 @@ def main():
     parser.add_option('-v', '--verbose', dest="verbose", action='store_true',
                       help="output nonmatched lines")
     (options, args) = parser.parse_args()
+
+    if options.auto:
+        args += ['/var/log/yourevent/enterpriseapp-dev.log',
+                 '/var/log/yourevent/enterpriseapp-trace.log',
+                 ]
+
     return watchstuff(options, args)
+
 
 if __name__=='__main__':
     main()
